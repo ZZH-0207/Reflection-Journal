@@ -279,6 +279,9 @@
           </span>
         </div>
       </div>
+      
+      <!-- 复习信息提示 -->
+      <div id="review-info" class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/10 rounded-xl border border-blue-100 dark:border-blue-900/30"></div>
 
       <!-- 待复习进度条 -->
       <div class="mb-6 bg-gray-200 dark:bg-gray-800 rounded-full h-2 overflow-hidden">
@@ -485,6 +488,37 @@
       </div>
     </div>
   </div>
+  
+  <!-- 加练提示弹窗 -->
+  <div id="extra-practice-modal" class="fixed inset-0 z-[90] hidden overflow-y-auto">
+    <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+      <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm transition-opacity" onclick="closeExtraPracticeModal()"></div>
+      <div class="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-200/80 dark:border-gray-800/80 max-w-md w-full mx-auto text-left overflow-hidden">
+        <div class="p-6">
+          <div class="text-center mb-6">
+            <div class="w-16 h-16 mx-auto mb-4 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center">
+              <svg class="w-8 h-8 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </div>
+            <h3 class="text-xl font-semibold mb-2">今日基础定额已完成！</h3>
+            <p class="text-gray-500 dark:text-gray-400 text-sm">剩余还有 <span id="remaining-count" class="font-semibold text-orange-600">0</span> 道待清，可选择加练</p>
+          </div>
+          <div class="space-y-3">
+            <button onclick="addExtraPractice(1)" class="w-full px-4 py-3 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+              再练 1 题
+            </button>
+            <button onclick="addExtraPractice(5)" class="w-full px-4 py-3 bg-brand-500 hover:bg-brand-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/></svg>
+              再练 5 题
+            </button>
+            <button onclick="closeExtraPracticeModal()" class="w-full px-4 py-3 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors">
+              结束今日复习
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ====== JavaScript ====== -->
   <script>
@@ -499,6 +533,7 @@
     let currentTags = [];         // 当前录入的标签
     let currentImageData = null;  // 当前上传图片的 base64
     let reviewQueue = [];         // 当前待复习队列
+    let remainingQueue = [];      // 剩余可加练题目
     let reviewIndex = 0;          // 当前复习到第几题
     let todayReviewed = 0;        // 今日已复习数
     let cardFlipped = false;      // 当前闪卡是否已翻转
@@ -926,7 +961,7 @@
       // 显示最近 10 条，按创建时间倒序
       const recent = [...questions].sort((a, b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 10);
       container.innerHTML = recent.map(q => {
-        const archived = q.review_params.interval > 100 && q.review_params.repetitions >= 3;
+        const archived = isArchived(q);
         return `
         <div class="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/80 hover:shadow-md transition-shadow cursor-pointer" onclick="showQuestionDetail('${q.id}')">
           <div class="flex items-start justify-between gap-3">
@@ -1103,6 +1138,47 @@
       document.body.style.overflow = '';
     }
     
+    // 显示加练提示弹窗
+    function showExtraPracticeModal() {
+      document.getElementById('remaining-count').textContent = remainingQueue.length;
+      document.getElementById('extra-practice-modal').classList.remove('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+    
+    // 关闭加练提示弹窗
+    function closeExtraPracticeModal() {
+      document.getElementById('extra-practice-modal').classList.add('hidden');
+      document.body.style.overflow = '';
+      // 显示完成提示
+      document.getElementById('no-review').classList.remove('hidden');
+      document.getElementById('flashcard-container').classList.add('hidden');
+    }
+    
+    // 加练N道题
+    function addExtraPractice(count) {
+      // 从剩余队列中取出N道题
+      const extraQuestions = remainingQueue.splice(0, count);
+      
+      // 添加到复习队列
+      reviewQueue = reviewQueue.concat(extraQuestions);
+      
+      // 关闭弹窗
+      closeExtraPracticeModal();
+      
+      // 显示闪卡
+      document.getElementById('no-review').classList.add('hidden');
+      document.getElementById('flashcard-container').classList.remove('hidden');
+      
+      // 显示第一道加练题目
+      showCurrentCard();
+      
+      // 更新提示信息
+      const totalDue = reviewQueue.length + remainingQueue.length;
+      updateReviewInfo(totalDue, reviewQueue.length, remainingQueue.length);
+      
+      showToast(`已添加 ${extraQuestions.length} 道加练题目`);
+    }
+    
     // ========================================
     // Browse 模块
     // ========================================
@@ -1147,7 +1223,7 @@
       }
       
       container.innerHTML = filtered.map(q => {
-        const archived = q.review_params.interval > 100 && q.review_params.repetitions >= 3;
+        const archived = isArchived(q);
         return `
         <div class="bg-white dark:bg-gray-900 rounded-xl p-5 border border-gray-200/80 dark:border-gray-800/80 hover:shadow-lg transition-all cursor-pointer" onclick="showQuestionDetail('${q.id}')">
           <div class="flex items-start justify-between gap-4">
@@ -1178,19 +1254,82 @@
     // Review 模块 — SM-2 算法
     // ========================================
 
+    // 判断题目是否应该归档（严格归档判定）
+    function isArchived(q) {
+      // 条件1：当前复习间隔 ≥ 90天
+      if (q.review_params.interval < 90) return false;
+      
+      // 条件2：SM-2连续成功轮次 ≥ 4次
+      if (q.review_params.repetitions < 4) return false;
+      
+      // 条件3：最近两次复习反馈均为 Good / Easy
+      const history = q.review_history || [];
+      if (history.length < 2) return false;
+      
+      const lastTwo = history.slice(-2);
+      const allGood = lastTwo.every(h => h.feedback === 'Good' || h.feedback === 'Easy');
+      
+      return allGood;
+    }
+    
+    // 计算两个日期之间的天数差
+    function daysBetween(date1, date2) {
+      const d1 = new Date(date1);
+      const d2 = new Date(date2);
+      const diffTime = d2 - d1;
+      return Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    }
+    
+    // 更新复习信息提示
+    function updateReviewInfo(totalDue, currentQueue, remaining) {
+      const infoEl = document.getElementById('review-info');
+      if (!infoEl) return;
+      
+      let html = `<div class="text-sm space-y-1">`;
+      html += `<div>今日总到期题目：<span class="font-semibold text-brand-600">${totalDue}</span> 道</div>`;
+      html += `<div>今日基础定额：<span class="font-semibold">22</span> 道（已完成 <span class="font-semibold text-green-600">${todayReviewed}</span> 道）</div>`;
+      if (remaining > 0) {
+        html += `<div>可加练剩余题目：<span class="font-semibold text-orange-600">${remaining}</span> 道</div>`;
+      }
+      html += `</div>`;
+      
+      infoEl.innerHTML = html;
+    }
+    
     function initReview() {
       const today = new Date().toISOString().slice(0, 10);
-      // 筛选待复习题目：nextReviewDate <= 今天 且未归档
-      reviewQueue = questions.filter(q => {
-        const archived = q.review_params.interval > 100 && q.review_params.repetitions >= 3;
-        return !archived && q.review_params.nextReviewDate <= today;
+      
+      // 1. 初选池：所有「下次复习日期 ≤ 今日」的题目
+      const allDue = questions.filter(q => q.review_params.nextReviewDate <= today);
+      
+      // 2. 剔除池：满足归档条件的题目
+      const dueQuestions = allDue.filter(q => !isArchived(q));
+      
+      // 3. 优先级排序
+      dueQuestions.sort((a, b) => {
+        // 优先级1：逾期时间最久的题目
+        const overdueA = daysBetween(a.review_params.nextReviewDate, today);
+        const overdueB = daysBetween(b.review_params.nextReviewDate, today);
+        if (overdueA !== overdueB) return overdueB - overdueA;
+        
+        // 优先级2：连续答对次数最少的题目
+        const successA = a.review_params.repetitions || 0;
+        const successB = b.review_params.repetitions || 0;
+        if (successA !== successB) return successA - successB;
+        
+        // 优先级3：同优先级内随机打乱
+        return Math.random() - 0.5;
       });
-      // 打乱顺序
-      reviewQueue.sort(() => Math.random() - 0.5);
+      
+      // 4. 每日基础定额：22道
+      const DAILY_LIMIT = 22;
+      reviewQueue = dueQuestions.slice(0, DAILY_LIMIT);
+      remainingQueue = dueQuestions.slice(DAILY_LIMIT); // 剩余题目
+      
       reviewIndex = 0;
       todayReviewed = 0;
       cardFlipped = false;
-
+      
       // 统计今日已复习数
       const todayStr = today;
       questions.forEach(q => {
@@ -1198,13 +1337,18 @@
           if (h.date === todayStr) todayReviewed++;
         });
       });
-
+      
       // 更新 UI
-      const archivedCount = questions.filter(q => q.review_params.interval > 100 && q.review_params.repetitions >= 3).length;
-      document.getElementById('due-count').textContent = reviewQueue.length;
+      const archivedCount = questions.filter(q => isArchived(q)).length;
+      const totalDueCount = dueQuestions.length;
+      
+      document.getElementById('due-count').textContent = totalDueCount;
       document.getElementById('done-count').textContent = todayReviewed;
       document.getElementById('archived-count').textContent = archivedCount;
-
+      
+      // 更新复习信息提示
+      updateReviewInfo(totalDueCount, reviewQueue.length, remainingQueue.length);
+      
       if (reviewQueue.length === 0) {
         document.getElementById('no-review').classList.remove('hidden');
         document.getElementById('flashcard-container').classList.add('hidden');
@@ -1219,9 +1363,15 @@
 
     function showCurrentCard() {
       if (reviewIndex >= reviewQueue.length) {
-        // 复习完成
-        document.getElementById('no-review').classList.remove('hidden');
-        document.getElementById('flashcard-container').classList.add('hidden');
+        // 复习完成，检查是否有剩余题目可加练
+        if (remainingQueue.length > 0) {
+          // 显示加练提示弹窗
+          showExtraPracticeModal();
+        } else {
+          // 没有剩余题目，显示完成提示
+          document.getElementById('no-review').classList.remove('hidden');
+          document.getElementById('flashcard-container').classList.add('hidden');
+        }
         updateReviewProgress();
         return;
       }
@@ -1353,7 +1503,7 @@
       todayReviewed++;
 
       // 更新计数
-      const totalArchived = questions.filter(item => item.review_params.interval > 100 && item.review_params.repetitions >= 3).length;
+      const totalArchived = questions.filter(item => isArchived(item)).length;
       document.getElementById('done-count').textContent = todayReviewed;
       document.getElementById('archived-count').textContent = totalArchived;
 
@@ -1410,7 +1560,7 @@
     function updateReviewBadge() {
       const today = new Date().toISOString().slice(0, 10);
       const count = questions.filter(q => {
-        const archived = q.review_params.interval > 100 && q.review_params.repetitions >= 3;
+        const archived = isArchived(q);
         return !archived && q.review_params.nextReviewDate <= today;
       }).length;
       const badge = document.getElementById('review-badge');
@@ -1430,7 +1580,7 @@
     function renderInsights() {
       // 概览统计
       const total = questions.length;
-      const archivedCount = questions.filter(q => q.review_params.interval > 100 && q.review_params.repetitions >= 3).length;
+      const archivedCount = questions.filter(q => isArchived(q)).length;
       const active = total - archivedCount;
       const totalReviews = questions.reduce((sum, q) => sum + (q.review_history || []).length, 0);
 
