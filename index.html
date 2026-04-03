@@ -388,18 +388,6 @@
           <p class="text-xs text-gray-400 mt-1">平均正确率</p>
         </div>
       </div>
-      
-      <!-- 存储使用情况 -->
-      <div class="bg-white dark:bg-gray-900 rounded-xl p-4 border border-gray-200/80 dark:border-gray-800/80 mb-8">
-        <div class="flex items-center justify-between mb-2">
-          <h3 class="font-semibold text-sm">存储使用情况</h3>
-          <span id="storage-size" class="text-xs text-gray-400">0 MB / 5 MB</span>
-        </div>
-        <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-          <div id="storage-bar" class="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all" style="width: 0%"></div>
-        </div>
-        <p class="text-xs text-gray-400 mt-2">localStorage限制约5MB，建议定期导出数据备份</p>
-      </div>
 
       <!-- 图表 -->
       <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -540,6 +528,8 @@
     const STORAGE_KEY = 'reflection_journal_data';
     const THEME_KEY = 'reflection_journal_theme';
     const CUSTOM_REASONS_KEY = 'reflection_journal_custom_reasons';
+    const DB_NAME = 'ReflectionJournalDB';
+    const DB_VERSION = 1;
 
     let questions = [];           // 所有习题数据
     let currentTags = [];         // 当前录入的标签
@@ -550,12 +540,91 @@
     let todayReviewed = 0;        // 今日已复习数
     let cardFlipped = false;      // 当前闪卡是否已翻转
     let chartInstances = {};      // Chart.js 实例缓存
+    let db = null;                // IndexedDB 实例
+
+    // ========================================
+    // IndexedDB 封装
+    // ========================================
+    async function initDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => reject(request.error);
+        
+        request.onsuccess = () => {
+          db = request.result;
+          resolve(db);
+        };
+        
+        request.onupgradeneeded = (event) => {
+          const database = event.target.result;
+          
+          // 创建题目存储
+          if (!database.objectStoreNames.contains('questions')) {
+            database.createObjectStore('questions', { keyPath: 'id' });
+          }
+        };
+      });
+    }
+    
+    async function loadDataFromDB() {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['questions'], 'readonly');
+        const store = transaction.objectStore('questions');
+        const request = store.getAll();
+        
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+    
+    async function saveDataToDB(data) {
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['questions'], 'readwrite');
+        const store = transaction.objectStore('questions');
+        
+        // 清空旧数据
+        store.clear();
+        
+        // 添加新数据
+        data.forEach(item => store.put(item));
+        
+        transaction.oncomplete = () => resolve();
+        transaction.onerror = () => reject(transaction.error);
+      });
+    }
 
     // ========================================
     // 初始化
     // ========================================
-    document.addEventListener('DOMContentLoaded', () => {
-      loadData();
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        // 初始化IndexedDB
+        await initDB();
+        
+        // 尝试从IndexedDB加载数据
+        questions = await loadDataFromDB();
+        
+        // 如果IndexedDB为空，尝试从localStorage迁移
+        if (questions.length === 0) {
+          const oldData = localStorage.getItem(STORAGE_KEY);
+          if (oldData) {
+            questions = JSON.parse(oldData);
+            await saveDataToDB(questions);
+            showToast(`已从localStorage迁移 ${questions.length} 道题目到IndexedDB`);
+            // 迁移成功后删除旧数据
+            localStorage.removeItem(STORAGE_KEY);
+          }
+        }
+        
+        console.log(`IndexedDB: 已加载 ${questions.length} 道题目`);
+      } catch (e) {
+        console.error('IndexedDB初始化失败:', e);
+        // 降级到localStorage
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) questions = JSON.parse(raw);
+      }
+      
       initTheme();
       switchTab('review');
       updateSubjectDatalist();
@@ -571,33 +640,21 @@
     // 数据持久化
     // ========================================
     function loadData() {
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) questions = JSON.parse(raw);
-      } catch (e) {
-        console.error('数据加载失败:', e);
-        questions = [];
-      }
+      // 数据已在DOMContentLoaded中加载
     }
 
-    function saveData() {
+    async function saveData() {
       try {
+        await saveDataToDB(questions);
+        
+        // 计算存储大小
         const dataStr = JSON.stringify(questions);
         const dataSize = new Blob([dataStr]).size;
-        
-        // 检查存储大小（localStorage限制约5MB）
         const sizeMB = (dataSize / 1024 / 1024).toFixed(2);
-        console.log(`数据大小: ${sizeMB} MB`);
-        
-        // 如果超过4MB，显示警告
-        if (dataSize > 4 * 1024 * 1024) {
-          showToast(`存储空间即将满 (${sizeMB}MB)，建议导出数据备份`, 5000);
-        }
-        
-        localStorage.setItem(STORAGE_KEY, dataStr);
+        console.log(`数据已保存: ${questions.length} 道题目, ${sizeMB} MB`);
       } catch (e) {
         console.error('数据保存失败:', e);
-        showToast('存储空间不足！请立即导出数据备份，然后删除部分题目', 10000);
+        showToast('数据保存失败！请导出备份');
       }
     }
     
@@ -606,11 +663,9 @@
       const dataStr = JSON.stringify(questions);
       const dataSize = new Blob([dataStr]).size;
       const sizeMB = (dataSize / 1024 / 1024).toFixed(2);
-      const usedPercent = ((dataSize / (5 * 1024 * 1024)) * 100).toFixed(1);
       
       return {
         sizeMB,
-        usedPercent,
         questionCount: questions.length,
         archivedCount: questions.filter(q => isArchived(q)).length
       };
@@ -1632,21 +1687,6 @@
       document.getElementById('stat-active').textContent = active;
       document.getElementById('stat-reviewed').textContent = totalReviews;
       document.getElementById('stat-accuracy').textContent = accuracy + '%';
-      
-      // 更新存储使用情况
-      const storageInfo = getStorageInfo();
-      document.getElementById('storage-size').textContent = `${storageInfo.sizeMB} MB / 5 MB`;
-      const storageBar = document.getElementById('storage-bar');
-      storageBar.style.width = `${storageInfo.usedPercent}%`;
-      
-      // 根据使用率改变颜色
-      if (storageInfo.usedPercent > 80) {
-        storageBar.className = 'h-full bg-gradient-to-r from-red-400 to-red-500 rounded-full transition-all';
-      } else if (storageInfo.usedPercent > 60) {
-        storageBar.className = 'h-full bg-gradient-to-r from-amber-400 to-amber-500 rounded-full transition-all';
-      } else {
-        storageBar.className = 'h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all';
-      }
 
       // 科目分布饼图
       renderSubjectChart();
