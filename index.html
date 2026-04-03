@@ -304,14 +304,7 @@
             <div id="flashcard-inner" class="flashcard-inner relative bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200/80 dark:border-gray-800/80 overflow-hidden">
               <!-- 闪卡正面（题干） -->
               <div class="flashcard-front p-6 sm:p-8">
-                <div class="flex items-center justify-between mb-4">
-                  <div class="flex items-center gap-2">
-                    <span id="card-subject" class="px-3 py-1 text-xs font-medium rounded-full bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400"></span>
-                    <span id="card-reason" class="px-3 py-1 text-xs font-medium rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"></span>
-                  </div>
-                  <span id="card-tags" class="text-xs text-gray-400"></span>
-                </div>
-                <p id="card-source" class="text-sm text-gray-400 mb-4"></p>
+                <!-- 正面只显示题干 -->
                 <div id="card-question" class="md-render text-base leading-relaxed"></div>
                 <div class="flex items-center justify-center mt-8 gap-2 text-gray-400 text-sm">
                   <svg class="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
@@ -320,6 +313,16 @@
               </div>
               <!-- 闪卡背面（答案） -->
               <div class="flashcard-back absolute inset-0 p-6 sm:p-8 overflow-y-auto">
+                <!-- 详细信息 -->
+                <div class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
+                  <div class="flex items-center gap-2 mb-2 flex-wrap">
+                    <span id="card-subject" class="px-3 py-1 text-xs font-medium rounded-full bg-brand-50 dark:bg-brand-900/30 text-brand-600 dark:text-brand-400"></span>
+                    <span id="card-reason" class="px-3 py-1 text-xs font-medium rounded-full bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400"></span>
+                  </div>
+                  <p id="card-source" class="text-xs text-gray-400 mb-1"></p>
+                  <p id="card-tags" class="text-xs text-gray-400"></p>
+                </div>
+                <!-- 正确答案 -->
                 <h3 class="text-sm font-semibold text-brand-500 mb-3 uppercase tracking-wider">正确答案</h3>
                 <div id="card-answer" class="md-render text-base leading-relaxed mb-4"></div>
                 <div id="card-original-solution" class="hidden">
