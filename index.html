@@ -49,8 +49,9 @@
     /* 闪卡翻转动画 */
     .flashcard-inner { transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1); transform-style: preserve-3d; }
     .flashcard-inner.flipped { transform: rotateX(180deg); }
-    .flashcard-front, .flashcard-back { backface-visibility: hidden; }
-    .flashcard-back { transform: rotateX(180deg); }
+    .flashcard-front, .flashcard-back { backface-visibility: hidden; position: absolute; inset: 0; }
+    .flashcard-front { z-index: 2; }
+    .flashcard-back { transform: rotateX(180deg); z-index: 1; }
     /* 透视容器 */
     .perspective { perspective: 1200px; }
     /* Markdown 渲染样式 */
@@ -303,7 +304,7 @@
           <div class="perspective">
             <div id="flashcard-inner" class="flashcard-inner relative bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200/80 dark:border-gray-800/80 overflow-hidden">
               <!-- 闪卡正面（题干） -->
-              <div class="flashcard-front absolute inset-0 p-6 sm:p-8 overflow-y-auto">
+              <div class="flashcard-front p-6 sm:p-8 overflow-y-auto">
                 <!-- 正面只显示题干 -->
                 <div id="card-question" class="md-render text-base leading-relaxed"></div>
                 <div class="flex items-center justify-center mt-8 gap-2 text-gray-400 text-sm">
@@ -312,7 +313,7 @@
                 </div>
               </div>
               <!-- 闪卡背面（答案） -->
-              <div class="flashcard-back absolute inset-0 p-6 sm:p-8 overflow-y-auto">
+              <div class="flashcard-back p-6 sm:p-8 overflow-y-auto">
                 <!-- 详细信息 -->
                 <div class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
                   <div class="flex items-center gap-2 mb-2 flex-wrap">
