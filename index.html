@@ -303,16 +303,13 @@
         <div id="flashcard-container" class="hidden">
           <!-- 题目卡片 -->
           <div class="bg-white dark:bg-gray-900 rounded-2xl shadow-xl border border-gray-200/80 dark:border-gray-800/80 p-6 sm:p-8">
-            <!-- 题干区域 -->
-            <div id="card-front" class="block">
-              <div id="card-question" class="md-render text-base leading-relaxed mb-6"></div>
-              <div class="flex items-center justify-center gap-2 text-gray-400 text-sm">
-                <svg class="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
-                <span>点击下方按钮查看答案</span>
-              </div>
+            <!-- 题干区域（始终显示） -->
+            <div class="mb-6 pb-6 border-b border-gray-200 dark:border-gray-700">
+              <h3 class="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase tracking-wider">题目</h3>
+              <div id="card-question" class="md-render text-base leading-relaxed"></div>
             </div>
             
-            <!-- 答案区域 -->
+            <!-- 答案区域（点击后显示） -->
             <div id="card-back" class="hidden">
               <!-- 详细信息 -->
               <div class="mb-4 pb-4 border-b border-gray-200 dark:border-gray-700">
@@ -330,6 +327,12 @@
                 <h3 class="text-sm font-semibold text-brand-500 mb-3 uppercase tracking-wider">原解照片</h3>
                 <img id="card-original-img" class="rounded-xl max-h-80 object-contain border border-gray-200 dark:border-gray-700" alt="原解">
               </div>
+            </div>
+            
+            <!-- 提示文字（未显示答案时） -->
+            <div id="card-hint" class="flex items-center justify-center gap-2 text-gray-400 text-sm">
+              <svg class="w-4 h-4 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3"/></svg>
+              <span>点击下方按钮查看答案</span>
             </div>
           </div>
 
@@ -1500,8 +1503,8 @@
       }
 
       // 重置卡片状态
-      document.getElementById('card-front').classList.remove('hidden');
       document.getElementById('card-back').classList.add('hidden');
+      document.getElementById('card-hint').classList.remove('hidden');
       document.getElementById('btn-flip').classList.remove('hidden');
       document.getElementById('btn-flip').textContent = '查看答案';
       document.getElementById('feedback-buttons').classList.add('hidden');
@@ -1516,21 +1519,21 @@
     function flipCard() {
       cardFlipped = !cardFlipped;
       
-      const front = document.getElementById('card-front');
       const back = document.getElementById('card-back');
+      const hint = document.getElementById('card-hint');
       const btn = document.getElementById('btn-flip');
       const feedbackBtns = document.getElementById('feedback-buttons');
       
       if (cardFlipped) {
-        // 显示答案
-        front.classList.add('hidden');
+        // 显示答案（题目始终显示）
         back.classList.remove('hidden');
+        hint.classList.add('hidden');
         btn.textContent = '收起答案';
         feedbackBtns.classList.remove('hidden');
       } else {
-        // 显示题目
-        front.classList.remove('hidden');
+        // 隐藏答案
         back.classList.add('hidden');
+        hint.classList.remove('hidden');
         btn.textContent = '查看答案';
         feedbackBtns.classList.add('hidden');
       }
