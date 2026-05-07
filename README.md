@@ -20,6 +20,8 @@
 
 一个**自带 AI 知识图谱**的间隔重复复习工具。记录你做错的题目，SM-2 算法自动安排最佳复习时机，AI 分析所有知识点的内在关联，生成交互式知识图谱——帮你看清自己的知识结构。
 
+<p align="center"><img src="graph.png" alt="AI知识图谱演示" width="800"></p>
+
 ## AI 知识图谱
 
 <p align="center"><em>点击 AI 分析按钮，DeepSeek V4 Pro 自动发现知识点之间的 5 种关联关系</em></p>
