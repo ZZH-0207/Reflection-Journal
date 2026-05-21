@@ -651,14 +651,19 @@
     }
 
     function saveData() {
+      if (!db) {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
+        return;
+      }
       saveDataToDB(questions).then(() => {
         const dataStr = JSON.stringify(questions);
         const dataSize = new Blob([dataStr]).size;
         const sizeMB = (dataSize / 1024 / 1024).toFixed(2);
         console.log(`数据已保存: ${questions.length} 道题目, ${sizeMB} MB`);
       }).catch(e => {
-        console.error('数据保存失败:', e);
-        showToast('数据保存失败: ' + (e?.message || e?.toString() || '未知错误'), 'error');
+        console.error('数据保存失败，降级到localStorage:', e);
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(questions));
+        showToast('已保存到本地存储', 'success');
       });
     }
     
