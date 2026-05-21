@@ -567,8 +567,6 @@
         
         request.onupgradeneeded = (event) => {
           const database = event.target.result;
-          
-          // 创建题目存储
           if (!database.objectStoreNames.contains('questions')) {
             database.createObjectStore('questions', { keyPath: 'id' });
           }
@@ -660,7 +658,7 @@
         console.log(`数据已保存: ${questions.length} 道题目, ${sizeMB} MB`);
       }).catch(e => {
         console.error('数据保存失败:', e);
-        showToast('数据保存失败！请导出备份');
+        showToast('数据保存失败: ' + (e?.message || e?.toString() || '未知错误'), 'error');
       });
     }
     
